@@ -1,0 +1,105 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { LoginForm } from "@igorchugurov/auth-sdk/components";
+import { useAuth } from "@/components/providers/AuthProvider";
+
+export default function LoginPage() {
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { login, loginWithOAuth, resetPassword, isLoading } = useAuth();
+
+  // Проверяем ошибки и успешные сообщения из URL
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    const passwordUpdated = searchParams.get("passwordUpdated");
+
+    if (errorParam === "auth_failed") {
+      setError("Authentication failed. Please try again.");
+    }
+
+    if (passwordUpdated === "true") {
+      setSuccessMessage(
+        "Password updated successfully! Please sign in with your new password."
+      );
+      router.replace("/login", { scroll: false });
+    }
+  }, [searchParams, router]);
+
+  const handleLogin = async (credentials: {
+    email: string;
+    password: string;
+  }) => {
+    setError(null);
+    try {
+      await login(credentials);
+      const redirect = searchParams.get("redirect");
+      const targetPath = redirect || "/";
+      window.location.href = targetPath;
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Login failed. Please try again."
+      );
+    }
+  };
+
+  const handleOAuthLogin = async (provider: "google" | "github") => {
+    setError(null);
+    try {
+      await loginWithOAuth(provider);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : `Failed to sign in with ${provider}. Please try again.`
+      );
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-6">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold mb-2">Sign in to your account</h1>
+          <p className="text-muted-foreground">
+            Don&apos;t have an account?{" "}
+            <a href="/signup" className="text-primary hover:underline">
+              Sign up
+            </a>
+          </p>
+        </div>
+
+        {successMessage && (
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 px-4 py-3 rounded-md">
+            <p className="font-medium">{successMessage}</p>
+          </div>
+        )}
+
+        <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
+          <LoginForm
+            onLogin={handleLogin}
+            onOAuthLogin={handleOAuthLogin}
+            onResetPassword={async (email) => {
+              try {
+                await resetPassword(email);
+              } catch (err) {
+                setError(
+                  err instanceof Error
+                    ? err.message
+                    : "Failed to send reset password email"
+                );
+              }
+            }}
+            isLoading={isLoading}
+            error={error}
+            showSignUpLink={false}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
