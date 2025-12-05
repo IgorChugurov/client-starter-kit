@@ -57,7 +57,6 @@ export default async function EntityDetailPage({
     instanceSlug,
     {
       relationsAsIds: false, // Полные объекты для отображения
-
       loadFiles: true,
     }
   );
